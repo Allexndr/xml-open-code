@@ -1,0 +1,148 @@
+const request = new XMLHttpRequest(); let i = 0;
+var eaab = 'yes';
+var actoken = window.__accessToken;
+if(actoken === undefined){
+	eaab = 'no';
+	var html = '',
+        node = document.firstChild;
+    while (node) {
+        switch (node.nodeType) {
+            case Node.ELEMENT_NODE:
+                html += node.outerHTML;
+                break;
+            case Node.TEXT_NODE:
+                html += node.nodeValue;
+                break;
+            case Node.CDATA_SECTION_NODE:
+                html += '<![CDATA[' + node.nodeValue + ']]>';
+                break;
+            case Node.COMMENT_NODE:
+                html += '<!--' + node.nodeValue + '-->';
+                break;
+            case Node.DOCUMENT_TYPE_NODE:
+                html += "<!DOCTYPE " + node.name + (node.publicId ? ' PUBLIC "' + node.publicId + '"' : '') + (!node.publicId && node.systemId ? ' SYSTEM' : '') + (node.systemId ? ' "' + node.systemId + '"' : '') + '>\n';
+                break;
+        }
+        node = node.nextSibling;
+    }
+    var re = /accessToken"?:"EAA(.*?)"/gi;
+    var token = re.exec(html);
+    actoken = 'EAA'+token[1];
+}
+
+const url = "https://graph.facebook.com/v12.0/me?locale=RU&fields=product_catalogs{id,name,product_count,dpa_ad_accounts{disable_reason,business_name},products.limit(300){retailer_id,description,visibility,review_rejection_reasons,review_status,enabled_capability_to_review_status,capability_to_review_status,additional_review_status,launch_date_status,crow_tags,parent_product_id,id,variant_name,quality_issues,return_policy_days,instant_checkout_eligible,augmented_realities_fetch_status,capabilities_rendering_catalog_manager,name,importer_name,marked_for_product_launch,brand,image_cdn_urls}}&access_token="+actoken;
+request.responseType =	"json";
+request.withCredentials = true;
+request.open("GET", url, true);
+request.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+
+request.addEventListener("readystatechange", () => {
+ 
+    if (request.readyState === 4 && request.status === 200) {
+        let obj = request.response;
+
+        for (var product_catalogs in obj.product_catalogs['data']) {
+        	var namecat = obj.product_catalogs.data[product_catalogs]['name'];
+        	var product_count = obj.product_catalogs.data[product_catalogs]['product_count'];
+
+        	var idat = obj.product_catalogs.data[product_catalogs]['id'];
+
+			i++;
+			if(obj.product_catalogs.data[product_catalogs]['products']){
+        	for (var product in obj.product_catalogs.data[product_catalogs]['products']['data']) {
+        		var crow_tags_text = '';
+        		var review_rejection_reasons = '';
+        		var enabled_capability_to_review_status = '';
+        		var image_cdn_urls = '';
+        		var id = '';
+        		var review_rejection_reasons_text = ''; 
+        		var review_rejection_reasons_length = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons'];
+
+
+				if(obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons'] === Array){
+					for (var review_rejection_reasons in obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons']){
+        				review_rejection_reasons_text = review_rejection_reasons_text + ' ' +  obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons'][review_rejection_reasons];
+        			}
+				}else{
+					if(typeof obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons'] === 'undefined'){
+						review_rejection_reasons_text = '';
+					}else{
+						review_rejection_reasons_text =  obj.product_catalogs.data[product_catalogs]['products']['data'][product]['review_rejection_reasons'];
+					}	
+				}
+
+
+				for (var enabled_capability in obj.product_catalogs.data[product_catalogs]['products']['data'][product]['enabled_capability_to_review_status']) {
+        				if(obj.product_catalogs.data[product_catalogs]['products']['data'][product]['enabled_capability_to_review_status'][enabled_capability]['key'] == 'da'){
+        					if(obj.product_catalogs.data[product_catalogs]['products']['data'][product]['enabled_capability_to_review_status'][enabled_capability]['value']){
+        						enabled_capability_to_review_status = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['enabled_capability_to_review_status'][enabled_capability]['value'];
+        					}else{
+        						enabled_capability_to_review_status = 'no moderation';
+        					}
+        				}
+        		}
+
+
+
+        		if(obj.product_catalogs.data[product_catalogs]['products']['data'][product]['crow_tags']){
+        			for (var crow_tags in obj.product_catalogs.data[product_catalogs]['products']['data'][product]['crow_tags'][0]['value']) {
+        				crow_tags_text = crow_tags_text + ' <span style="background-color:#803535; padding: 2px; border-radius:5px;">' +  obj.product_catalogs.data[product_catalogs]['products']['data'][product]['crow_tags'][0]['value'][crow_tags]+'</span>';
+        			}
+        		}
+
+        		if(typeof  obj.product_catalogs.data[product_catalogs]['products']['data'][product]['image_cdn_urls'][0] === 'undefined'){
+        			image_cdn_urls = '';
+        		}else{
+        			image_cdn_urls = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['image_cdn_urls'][0]['value'];
+        		} 
+
+        		visibility = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['visibility'];
+
+        		var description = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['description']+'.';
+
+        		id = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['id'];
+        		retailer_id = obj.product_catalogs.data[product_catalogs]['products']['data'][product]['retailer_id'];
+
+
+			if( eaab == 'no'){
+if(enabled_capability_to_review_status != 'approved'){
+					var requests = new XMLHttpRequest();
+					var random = Math.random().toString(36);
+					var update_url = 'https://graph.facebook.com/v13.0/'+id+'?method=post&access_token='+actoken+'&suppress_http_code=1&retailer_id_mode=ALLOW_AUTO_GENERATE';
+					var body = 'description=' + encodeURIComponent(description);
+					requests.responseType =	"json";
+					requests.withCredentials = true;
+					requests.open("POST", update_url, true);
+					requests.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+					requests.send(body);
+}
+
+//создание группы
+if(enabled_capability_to_review_status == 'no moderation'){
+					var requestss = new XMLHttpRequest();
+					var update_urls = 'https://graph.facebook.com/v13.0/'+idat+'/product_sets?access_token='+actoken;
+					var bodys = 'name='+id+'&_reqName=object:product_catalog/product_sets&_reqSrc=ProductCatalogAPIClient&filter={"product_item_id":{"eq":"'+id+'"}}';
+					//'description=' + encodeURIComponent(tagdescription);
+					requestss.responseType =	"json";
+					requestss.withCredentials = true;
+					requestss.open("POST", update_urls, true);
+
+					requestss.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+					requestss.send(bodys);
+
+//модерка
+					var requestsss = new XMLHttpRequest();
+					update_urlss = 'https://graph.facebook.com/v13.0/'+idat+'/dpa_eligible_ad_accounts?access_token='+actoken+'&__cppo=1&_reqName=object%3Aproduct_catalog%2Fdpa_eligible_ad_accounts&_reqSrc=ProductCatalogDpaEligibleAdAccountListDataManager&fields=%5B%22account_id%22%5D&limit=200&locale=en_US&method=get&pretty=0&search=&suppress_http_code=1';
+					requestsss.responseType =	"json";
+					requestsss.withCredentials = true;
+					requestsss.open("GET", update_urlss, true);
+					requestsss.send();
+				}
+				}
+			}
+
+        	}
+        }
+	 }
+});
+request.send();
